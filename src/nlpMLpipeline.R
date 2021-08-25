@@ -11,11 +11,11 @@ options(readr.default_locale=readr::locale(tz="US/Eastern"))
 # TRIAGE NOTES
 #-----------------------
 #rm(list=ls(pattern="^triage"))
-triage.cases <- read_csv("C:/Users/vavula1/Desktop/Genentech/v1/DEID_STROKE_CASES_INTERESTED_NOTES_FINAL_FORMATTED.csv")%>%
+triage.cases <- read_csv("~/Genentech/v1/DEID_STROKE_CASES_INTERESTED_NOTES_FINAL_FORMATTED.csv")%>%
   select(-c('pt_id','enc_dt'))
-triage.controls.1 <- read_csv("C:/Users/vavula1/Desktop/Genentech/v1/DEID_STROKE_CONTROL_1_INTERESTED_NOTES_FORMATTED.csv")%>%
+triage.controls.1 <- read_csv("~/Genentech/v1/DEID_STROKE_CONTROL_1_INTERESTED_NOTES_FORMATTED.csv")%>%
   select(-c('pt_id','enc_dt'))
-triage.controls.3 <- read_csv("C:/Users/vavula1/Desktop/Genentech/v1/DEID_STROKE_CONTROL_3_INTERESTED_NOTES_FORMATTED.csv")%>%
+triage.controls.3 <- read_csv("~/Genentech/v1/DEID_STROKE_CONTROL_3_INTERESTED_NOTES_FORMATTED.csv")%>%
   select(-c('pt_id','enc_dt'))
 #intersect(colnames(tmp.cases),colnames(tmp.controls))
 triage.controls.1[setdiff(names(triage.controls.3), names(triage.controls.1))] <- 0
@@ -433,11 +433,11 @@ for (dat in 1:length(provider.binary.testSet)){
 # TRIAGE NOTES Negated
 #-----------------------
 #rm(list=ls(pattern="^negated"))
-negated.triage.cases <- read_csv("C:/Users/vavula1/Desktop/Genentech/v1/DEID_STROKE_CASES_INTERESTED_NOTES_FINAL_FORMATTED_NEGATED.csv")%>%
+negated.triage.cases <- read_csv("~/Genentech/v1/DEID_STROKE_CASES_INTERESTED_NOTES_FINAL_FORMATTED_NEGATED.csv")%>%
   select(-c('pt_id','enc_dt'))
 negated.triage.controls.1 <- read_csv("DEID_STROKE_CONTROL_1_INTERESTED_NOTES_FORMATTED_NEGATED.csv")%>%
   select(-c('pt_id','enc_dt'))
-negated.triage.controls.3 <- read_csv("C:/Users/vavula1/Desktop/Genentech/v1/DEID_STROKE_CONTROL_3_INTERESTED_NOTES_FORMATTED_NEGATED.csv")%>%
+negated.triage.controls.3 <- read_csv("~/Genentech/v1/DEID_STROKE_CONTROL_3_INTERESTED_NOTES_FORMATTED_NEGATED.csv")%>%
   select(-c('pt_id','enc_dt'))
 negated.triage.controls.1[setdiff(names(negated.triage.controls.3), names(negated.triage.controls.1))] <- 0
 negated.triage.controls.3[setdiff(names(negated.triage.controls.1), names(negated.triage.controls.3))] <- 0
@@ -1552,13 +1552,13 @@ legend("topright",      # location of the legend on the heatmap plot
 )
 dev.off()
 # heatmap with Controls-3 and Controls-1 
-triage.cases <- read_csv("C:/Users/vavula1/Desktop/Genentech/v1/DEID_STROKE_CASES_INTERESTED_NOTES_FINAL_FORMATTED.csv")%>%
+triage.cases <- read_csv("~/Genentech/v1/DEID_STROKE_CASES_INTERESTED_NOTES_FINAL_FORMATTED.csv")%>%
   select(-c('pt_id','enc_dt'))%>%
   mutate(label = 'CASES')
-triage.controls.1 <- read_csv("C:/Users/vavula1/Desktop/Genentech/v1/DEID_STROKE_CONTROL_1_INTERESTED_NOTES_FORMATTED.csv")%>%
+triage.controls.1 <- read_csv("~/Genentech/v1/DEID_STROKE_CONTROL_1_INTERESTED_NOTES_FORMATTED.csv")%>%
   select(-c('pt_id','enc_dt'))%>%
   mutate(label = 'CONTROLS1')
-triage.controls.3 <- read_csv("C:/Users/vavula1/Desktop/Genentech/v1/DEID_STROKE_CONTROL_3_INTERESTED_NOTES_FORMATTED.csv")%>%
+triage.controls.3 <- read_csv("~/Genentech/v1/DEID_STROKE_CONTROL_3_INTERESTED_NOTES_FORMATTED.csv")%>%
   select(-c('pt_id','enc_dt'))%>%
   mutate(label = 'CONTROLS3')
 triage.controls.1[setdiff(names(triage.controls.3), names(triage.controls.1))] <- 0
