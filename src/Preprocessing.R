@@ -1,12 +1,17 @@
-#:::::::::::::::::::::
-# Data Pre-processing
-#::::::::::::::::::::
 library(readxl)
 library(dplyr)
 library(mice)
 library(caTools)
 library(caret)
 library(corrplot)
+library(ggplot2)
+library(cowplot)
+library(openxlsx)
+library(pROC)
+library(RColorBrewer)
+#------------------
+# Data Pre-processing
+#------------------
 ## Custom method to re-define levels of categorical variables
 adjust_cat_levels<-function(dat){
   return(dat%>%
@@ -34,22 +39,23 @@ features<-c(
 CONTROLS<-list()
 for (dat in 1:3) {
   CONTROLS[[dat]]<-adjust_cat_levels(
-    readxl::read_excel(paste("CONTROLS",dat,"_DATABASE_v1.4_8.01.2020.xlsx",sep = ""),
-                       na=c("NA"),col_names = T
-    )%>%
-      filter(ENC_TYPE %in% c("ED ONLY", "ED TO IP"))        # Consider only 'ED ONLY' and 'ED to IP' encounters
-  )%>%
-    select("PT_ID",features)%>%
+            readxl::read_excel(paste("CONTROLS",dat,"_DATABASE_v1.4_8.01.2020.xlsx",sep = ""),
+                                   na=c("NA"),col_names = T
+                              )%>%
+                          filter(ENC_TYPE %in% c("ED ONLY", "ED TO IP"))        # Consider only 'ED ONLY' and 'ED to IP' encounters
+                        )%>%
+    select("PT_ID","INDEX_DT",features)%>%
     mutate(indicatorMissingLDL=if_else(is.na(LDL_MEDIAN_BEFORE_INDEX),1,0),     # Create a binary variable to indicate patient with missing LDL value
            indicatorMissingA1C=if_else(is.na(HBA1C_MEDIAN_BEFORE_INDEX),1,0)    # Create a binary variable to indicate patient with missing A1c value
-    )
+           #, uniqueID = paste(PT_ID, as.numeric(INDEX_DT), sep = "_")
+           )
 }
 names(CONTROLS)<-paste0("CONTROLS",seq_along(CONTROLS))
 ## Impute missing values
 CONTROLS.afterImp<-list()
 for (dat in 1:3){                                                               # Create S3:mids MICE objects for each CONTROL set
   CONTROLS.afterImp[[dat]]<-mice(CONTROLS[[dat]][features],
-                                 m=25,maxit = 25,method = "pmm",seed=99)
+                               m=5,maxit = 5,method = "pmm",seed=99)
 }
 names(CONTROLS.afterImp)<-paste0("CONTROLS",seq_along(CONTROLS.afterImp))
 ## Read CASES
@@ -59,7 +65,8 @@ CASES<-adjust_cat_levels(
   mutate(indicatorMissingLDL=if_else(is.na(LDL_MEDIAN_BEFORE_INDEX),1,0),       # Create a binary variable to indicate patient with missing LDL value
          indicatorMissingA1C=if_else(is.na(HBA1C_MEDIAN_BEFORE_INDEX),1,0)      # Create a binary variable to indicate patient with missing A1c value
   )
-jiang.ImpLabs<-read_excel("jiangLabs.xlsx",na=c("NA"),col_names=T)
+#setwd("v1")
+#jiang.ImpLabs<-read_excel("jiangLabs.xlsx",na=c("NA"),col_names=T)
 #x<-round(colSums(is.na(CASES))/length(CASES$PT_ID)*100,0)                      # Compute missing %
 CASES<-left_join(CASES,
                  jiang.ImpLabs,
@@ -71,11 +78,11 @@ CASES<-left_join(CASES,
     LDL_MEDIAN_BEFORE_INDEX=coalesce(LDL_MEDIAN_BEFORE_INDEX.x,LDL_MEDIAN_BEFORE_INDEX.y),
     PLT_MEDIAN_BEFORE_INDEX=coalesce(PLT_MEDIAN_BEFORE_INDEX.x,PLT_MEDIAN_BEFORE_INDEX.y),
     WBC_MEDIAN_BEFORE_INDEX=coalesce(WBC_MEDIAN_BEFORE_INDEX.x,WBC_MEDIAN_BEFORE_INDEX.y)
-  )%>%
+         )%>%
   select("PT_ID","indicatorMissingLDL","indicatorMissingA1C",all_of(features))
-#select(order(colnames(.)))                                                   # Order columns alphabetically
+  #select(order(colnames(.)))                                                   # Order columns alphabetically
 CASES.afterImp<-mice(CASES[features],
-                     m=25,maxit = 25,method = "pmm",seed=99)
+                     m=5,maxit = 5,method = "pmm",seed=99)
 ## Extract data sets from MICE objects
 pull.data<-function(PT_ID,indicatorMissingLDL,indicatorMissingA1C,impDat){
   dat<-cbind(PT_ID,indicatorMissingLDL,indicatorMissingA1C,mice::complete(impDat))%>%
@@ -94,14 +101,5 @@ GNSIS<-rbind(
     mutate(label=0)
 )%>%
   select(label,everything())
+
 colnames(GNSIS[apply(GNSIS,2,function(x){all(x %in% 0:1)})==F])
-## Evaluate correlation among continuous variables 
-corr<-cor(GNSIS%>%
-            select("AGE_AT_INDEX","BP_SYSTOLIC","BP_DIASTOLIC","DAYS_BTW_LASTOP_INDEX","CREATININE_CLOSEST_TO_INDEX",
-                   "BMI_MEDIAN_BEFORE_INDEX","HB_MEDIAN_BEFORE_INDEX","HBA1C_MEDIAN_BEFORE_INDEX",
-                   "LDL_MEDIAN_BEFORE_INDEX","PLT_MEDIAN_BEFORE_INDEX","WBC_MEDIAN_BEFORE_INDEX"))
-png("pearsonCorr.png",height=800, width=800)
-corrplot(corr,
-         type = "upper",order = "hclust",
-         col=brewer.pal(n=8,name="RdYlBu"))
-dev.off()
