@@ -142,6 +142,71 @@ model_names <- c(`GLM` = 'GLM', `RF` = 'RF', `SVM` = 'SVM', `XGB` = 'XGB')
 notes_names <- c(`provider` = 'Provider Notes', `triage` = 'Triage Notes')
 covid_names <- c(`post` = 'Post-COVID', `pre` = 'Pre-COVID')
 # ALL models 
+ coord_radar_test <- function (theta = "x", start = 0, direction = 1) {
+  theta <- match.arg(theta, c("x", "y"))
+  r <- if (theta == "x") "y" else "x"
+  #dirty
+  rename_data <- function(coord, data) {
+    if (coord$theta == "y") {
+      plyr::rename(data, c("y" = "theta", "x" = "r"), warn_missing = FALSE)
+    } else {
+      plyr::rename(data, c("y" = "r", "x" = "theta"), warn_missing = FALSE)
+    }
+  }
+  theta_rescale <- function(coord, x, scale_details) {
+    rotate <- function(x) (x + coord$start) %% (2 * pi) * coord$direction
+    rotate(scales::rescale(x, c(0, 2 * pi), scale_details$theta.range))
+  }
+  r_rescale <- function(coord, x, scale_details) {
+    scales::rescale(x, c(0, 0.4), scale_details$r.range)
+  }
+  ggproto("CordRadar", CoordPolar, theta = theta, r = r, start = start, 
+          direction = sign(direction),
+          is_linear = function(coord) TRUE,
+          render_bg = function(self, scale_details, theme) {
+            scale_details <- rename_data(self, scale_details)
+
+            theta <- if (length(scale_details$theta.major) > 0)
+              theta_rescale(self, scale_details$theta.major, scale_details)
+            thetamin <- if (length(scale_details$theta.minor) > 0)
+              theta_rescale(self, scale_details$theta.minor, scale_details)
+            thetafine <- seq(0, 2 * pi, length.out = 100)
+
+            rfine <- c(r_rescale(self, scale_details$r.major, scale_details))
+
+            # This gets the proper theme element for theta and r grid lines:
+            #   panel.grid.major.x or .y
+            majortheta <- paste("panel.grid.major.", self$theta, sep = "")
+            minortheta <- paste("panel.grid.minor.", self$theta, sep = "")
+            majorr     <- paste("panel.grid.major.", self$r,     sep = "")
+
+            ggplot2:::ggname("grill", grid::grobTree(
+              ggplot2:::element_render(theme, "panel.background"),
+              if (length(theta) > 0) ggplot2:::element_render(
+                theme, majortheta, name = "angle",
+                x = c(rbind(0, 0.45 * sin(theta))) + 0.5,
+                y = c(rbind(0, 0.45 * cos(theta))) + 0.5,
+                id.lengths = rep(2, length(theta)),
+                default.units = "native"
+              ),
+              if (length(thetamin) > 0) ggplot2:::element_render(
+                theme, minortheta, name = "angle",
+                x = c(rbind(0, 0.45 * sin(thetamin))) + 0.5,
+                y = c(rbind(0, 0.45 * cos(thetamin))) + 0.5,
+                id.lengths = rep(2, length(thetamin)),
+                default.units = "native"
+              ),
+
+              ggplot2:::element_render(
+                theme, majorr, name = "radius",
+                x = rep(rfine, each = length(thetafine)) * sin(thetafine) + 0.5,
+                y = rep(rfine, each = length(thetafine)) * cos(thetafine) + 0.5,
+                id.lengths = rep(length(thetafine), length(rfine)),
+                default.units = "native"
+              )
+            ))
+          })
+}
 tiff("figure_4_supp.tiff", units = "in", width = 8, height = 10, res = 300, compression = 'jpeg')
 NLP.results.long$`Percentage of All CUIs used:` <- if_else(
   NLP.results.long$`No.of cuis` == 31, '5%', if_else(
@@ -155,30 +220,26 @@ NLP.results.long$`Percentage of All CUIs used:` <- if_else(
 NLP.results.long$`Percentage of All CUIs used:` <- factor(NLP.results.long$`Percentage of All CUIs used:`, 
                                                           levels = c('5%', '10%', '20%', '50%', '100%'))
 NLP.results.long %>%
-  ggplot(aes(x = variable, y = value, group = `No.of cuis`, fill = `Percentage of All CUIs used:`)) +
-  geom_polygon(alpha = .25, size = 1) +
-  facet_wrap(Model ~ Category+COVID ,
-             labeller = labeller(
-               Model = as_labeller(model_names) ,
-               Category = as_labeller(notes_names) ,
-               COVID = as_labeller(covid_names),
-               groupwrap = label_wrap_gen(width = 5)
-             )
-  ) +
-  coord_polar(start = -pi) +
+  ggplot(aes(x = variable, y = value)) +
+  geom_polygon(aes(group = `No.of cuis`, 
+                   color = `Percentage of All CUIs used:`),
+               size = .5, alpha = .15) +
+  facet_wrap(Model ~ Category + COVID, 
+             labeller = label_wrap_gen(multi_line=T)) +
+  coord_radar_test(start = -pi) +
   theme_light() +
   theme(
-      axis.title.x = element_blank() 
+    axis.title.x = element_blank() 
     , panel.spacing = unit(c(-0.5,0-0.5,0), "lines")
     , strip.text = element_text(size = 10, color = 'black', family = 'serif')
     , legend.text = element_text(size = 10, color = 'black', family = 'serif')
     , legend.title = element_text(size = 10, color = 'black', family = 'serif')
     , axis.title = element_text(size = 10, color = 'black', family = 'serif')
-    , axis.text = element_text(size = 10, color = 'black', family = 'serif')
     , legend.position = 'top'
   ) +
   labs(y = 'Performance Measure' , fill = 'Percentage of All CUIs used:') +
-  guides(fill = guide_legend(nrow = 1))
+  scale_y_continuous(limits = c(0,1), breaks = seq(0,1,.25), expand = c(0,0)) +
+  scale_fill_gradient2(limits = c(0,1), midpoint = .5)
 dev.off()
 # Best performers
 # Best performers
